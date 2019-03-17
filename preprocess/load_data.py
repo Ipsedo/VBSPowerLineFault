@@ -4,6 +4,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 from preprocess.frequencies import *
 import pickle as pkl
+from random import shuffle, randint, random
 
 
 def load_preprocess_data(data_root, nb_data_train, nb_data_test):
@@ -24,19 +25,29 @@ def load_preprocess_data(data_root, nb_data_train, nb_data_test):
     np.random.shuffle(positives)
     np.random.shuffle(negatives)
 
-    ratio_positive = 1 / 4
+    ratio_positive = 1 / 2.5
     nb_positive = int((nb_data_test + nb_data_train) * ratio_positive)
     nb_negative = nb_data_train + nb_data_test - nb_positive
 
     to_select = []
-    for i in range(nb_positive):
-        to_select.append(positives[i] * 3)
-        to_select.append(positives[i] * 3 + 1)
-        to_select.append(positives[i] * 3 + 2)
-    for i in range(nb_negative):
-        to_select.append(negatives[i] * 3)
-        to_select.append(negatives[i] * 3 + 1)
-        to_select.append(negatives[i] * 3 + 2)
+    pos_idx = list(range(nb_positive))
+    neg_idx = list(range(nb_negative))
+    shuffle(pos_idx)
+    shuffle(neg_idx)
+    pos_idx = set(pos_idx)
+    neg_idx = set(neg_idx)
+
+    while len(pos_idx) > 0 or len(neg_idx) > 0:
+        if random() > 0.5 and len(pos_idx) > 0:
+            i = pos_idx.pop()
+            to_select.append(positives[i] * 3)
+            to_select.append(positives[i] * 3 + 1)
+            to_select.append(positives[i] * 3 + 2)
+        elif len(neg_idx) > 0:
+            i = neg_idx.pop()
+            to_select.append(negatives[i] * 3)
+            to_select.append(negatives[i] * 3 + 1)
+            to_select.append(negatives[i] * 3 + 2)
 
     to_select = list(np.sort(np.asarray(to_select)).reshape(-1))
 
@@ -65,4 +76,5 @@ def load_preprocess_data(data_root, nb_data_train, nb_data_test):
     target = train_meta_df.values[:(nb_data_train + nb_data_test) * nb_canaux, 3]
     target = target.reshape(nb_data_train + nb_data_test, nb_canaux)
 
+    print("Data ready !")
     return {"signals": signals, "targets": target}

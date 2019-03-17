@@ -7,7 +7,7 @@ from torchnet.meter import AUCMeter
 
 if __name__ == "__main__":
     saved_model_path = "./res/saved_models/"
-    model_file_name = "model_class_repartition_best.pkl"
+    model_file_name = "smallconvmodel_class_repartition.pkl"
 
     print("Loading model...")
     model_data = pkl.load(open(saved_model_path + model_file_name, "rb"))
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     loss_fn = model_data["criterion"]
     optim = model_data["optim"]
 
-    nb_data_test = 100
+    nb_data_test = 300
     nb_canaux = 3
 
     data_root = "./data/"

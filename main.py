@@ -6,8 +6,10 @@ Created on Fri Feb  1 14:40:50 2019
 @author: cabanal & berrien
 """
 from models.conv_model import *
+from models.hybrid_model import SpacedConvModel
 from preprocess.load_data import *
 from torchnet.meter.aucmeter import AUCMeter
+from metrics.mcc import MCCMeter
 import sys
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -16,7 +18,7 @@ import pickle as pkl
 if __name__ == "__main__":
 
     nb_data_train = 250
-    nb_data_test = 50
+    nb_data_test = 100
     nb_canaux = 3
 
     data_root = "./data/"
@@ -39,16 +41,18 @@ if __name__ == "__main__":
     batch_size = 1
     nb_batch = int(nb_data_train / batch_size)
 
-    model = ConvModel()
+    #model = ConvModel()
+    model = SpacedConvModel(batch_size)
     loss_fn = nn.BCELoss()
 
     model.cuda()
     loss_fn.cuda()
 
-    optim = th.optim.Adagrad(model.parameters(), lr=1e-3)
+    optim = th.optim.Adagrad(model.parameters(), lr=1e-4)
 
     losses = []
     roc_aucs = []
+    mccs = []
 
     for e in range(nb_epoch):
         sum_loss = 0
@@ -78,6 +82,7 @@ if __name__ == "__main__":
         sys.stdout.flush()
 
         auc_meters = {i: AUCMeter() for i in range(nb_canaux)}
+        mcc_meters = {i: MCCMeter() for i in range(nb_canaux)}
 
         model.eval()
         batch_size_test = 2
@@ -94,16 +99,20 @@ if __name__ == "__main__":
 
             for c in range(nb_canaux):
                 auc_meters[c].add(out[:, c], y[:, c])
+                mcc_meters[c].add(out[:, c], y[:, c])
 
         sys.stdout.flush()
 
         res_roc_auc = []
+        res_mcc = []
 
         for c in range(nb_canaux):
-            print("Canal(%d), roc auc = %f" % (c, auc_meters[c].value()[0]))
+            print("Canal(%d), roc auc = %f, mcc = %f" % (c, auc_meters[c].value()[0], mcc_meters[c].value()))
             res_roc_auc.append(auc_meters[c].value()[0])
+            res_mcc.append(mcc_meters[c].value())
 
         roc_aucs.append(res_roc_auc)
+        mccs.append(res_mcc)
         print("")
         sys.stdout.flush()
 
@@ -122,6 +131,17 @@ if __name__ == "__main__":
     plt.xlabel("Epoch")
     plt.ylabel("ROC AUC")
     plt.title("ROC AUC values on dev set")
+    plt.legend()
+    plt.show()
+
+    mccs = np.asarray(mccs)
+
+    plt.plot(mccs[:, 0], c="b", label="Canal 1")
+    plt.plot(mccs[:, 1], c="r", label="Canal 2")
+    plt.plot(mccs[:, 2], c="g", label="Canal 3")
+    plt.xlabel("Epoch")
+    plt.ylabel("MCC")
+    plt.title("Matthews correlation coefficient values on dev set")
     plt.legend()
     plt.show()
 
